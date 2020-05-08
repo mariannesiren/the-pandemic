@@ -7,10 +7,14 @@
   },
   "dependencies": {
     "cookie-parser": "~1.4.4",
+    "cron": "^1.8.2",
+    "csvtojson": "^2.0.10",
     "debug": "~2.6.9",
-    "express": "~4.16.1",
-    "http-errors": "~1.6.3",
-    "jade": "~1.11.0",
-    "morgan": "~1.9.1"
+    "express": "^4.16.4",
+    "fs-extra": "^9.0.0",
+    "http-errors": "^1.6.3",
+    "mongoose": "^5.9.11",
+    "morgan": "~1.9.1",
+    "node-fetch": "^2.6.0"
   }
 }
