@@ -1,41 +1,28 @@
-var createError = require('http-errors');
-var express = require('express');
-var path = require('path');
-var cookieParser = require('cookie-parser');
-var logger = require('morgan');
+const express = require('express');
+const port = 8080;
+let coronaData = require('./services/corona-fetch');
+const app = express();
 
-var indexRouter = require('./routes/index');
-var usersRouter = require('./routes/users');
+// Set routers
+let apiRouter = require('./routes/api');
 
-var app = express();
+app.use('/api', apiRouter);
 
-// view engine setup
-app.set('views', path.join(__dirname, 'views'));
-app.set('view engine', 'jade');
-
-app.use(logger('dev'));
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser());
-app.use(express.static(path.join(__dirname, 'public')));
-
-app.use('/', indexRouter);
-app.use('/users', usersRouter);
-
-// catch 404 and forward to error handler
-app.use(function(req, res, next) {
-  next(createError(404));
+app.listen(port, () => function() {
+  // Start cronjob to fetch corona data
+  coronaData.dataFetch.start();
 });
 
-// error handler
-app.use(function(err, req, res, next) {
-  // set locals, only providing error in development
-  res.locals.message = err.message;
-  res.locals.error = req.app.get('env') === 'development' ? err : {};
+// Import mongoose
+const mongoose = require('mongoose');
+mongoose.connect('mongodb://127.0.0.1/PANDEMIC_DB', { useNewUrlParser: true });
 
-  // render the error page
-  res.status(err.status || 500);
-  res.render('error');
-});
+let db = mongoose.connection;
 
-module.exports = app;
+//Bind connection to error event (to get notification of connection errors)
+db.on('error', console.error.bind(console, 'MongoDB connection error:'));
+
+module.exports = {
+  app,
+  db
+};
