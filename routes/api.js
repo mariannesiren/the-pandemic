@@ -18,14 +18,21 @@ router.get('/all', function(req, res) {
 
   let projection = createDBProjection(req.query);
 
-  CoronaInfo.find((query ? query : {}), projection,function(err, data) {
-    if (err) {
-      res.status(500).send(err);
-    } else {
-      res.status(200).send(data);
-    }
-  });
+  let sortBy = req.query.sortBy ? req.query.sortBy : "ASC";
+  let sort = req.query.sort ? {[req.query.sort] : sortBy} : {country: 'ASC', date : sortBy};
 
+  CoronaInfo.find(query ? query : {}).
+    sort(sort).
+    select(projection).
+    exec(
+      function(err, data) {
+        if (err) {
+          res.status(500).send(err);
+        } else {
+          res.status(200).send(data);
+        }
+      }
+    );
 });
 
 router.get('/country/:name', function(req, res) {
@@ -34,20 +41,30 @@ router.get('/country/:name', function(req, res) {
 
   let projection = createDBProjection(req.query);
 
+  let sortBy = req.query.sortBy ? req.query.sortBy : "ASC";
+  let sort = req.query.sort ? {[req.query.sort] : sortBy} : {date : sortBy};
+
   if (query && query.country) {
-    CoronaInfo.find((query ? query : {}), projection, function(err, data) {
-      if (err) {
-        res.status(500).send(err);
-      } else {
-        res.status(200).send(data);
+    CoronaInfo.
+    find(query ? query : {}).
+    sort(sort).
+    select(projection).
+    exec(
+      function(err, data) {
+        if (err) {
+          res.status(500).send(err);
+        } else {
+          res.status(200).send(data);
+        }
       }
-    });
+    );
+
   } else {
     res.sendStatus(400);
   }
 });
 
-let coronaData = require('../services/corona-fetch');
+/*let coronaData = require('../services/corona-fetch');
 router.get('/fetchAll', function(req, res) {
 
   coronaData.saveAllData(function(fetchSuccessful) {
@@ -58,7 +75,7 @@ router.get('/fetchAll', function(req, res) {
     }
   });
 
-});
+});*/
 
 /*
  *  Creates a query for mongoose based on HTTP params and query. 
