@@ -29,6 +29,7 @@ router.get('/all', function(req, res) {
         if (err) {
           res.status(500).send(err);
         } else {
+          res.setHeader('Access-Control-Allow-Origin', '*');
           res.status(200).send(data);
         }
       }
@@ -54,6 +55,7 @@ router.get('/country/:name', function(req, res) {
         if (err) {
           res.status(500).send(err);
         } else {
+          res.setHeader('Access-Control-Allow-Origin', '*');
           res.status(200).send(data);
         }
       }
@@ -64,7 +66,7 @@ router.get('/country/:name', function(req, res) {
   }
 });
 
-/*let coronaData = require('../services/corona-fetch');
+let coronaData = require('../services/corona-fetch');
 router.get('/fetchAll', function(req, res) {
 
   coronaData.saveAllData(function(fetchSuccessful) {
@@ -75,7 +77,7 @@ router.get('/fetchAll', function(req, res) {
     }
   });
 
-});*/
+});
 
 /*
  *  Creates a query for mongoose based on HTTP params and query. 

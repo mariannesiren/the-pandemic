@@ -8,6 +8,9 @@ const CoronaInfo = require('../models/country-info');
 // CSV conversion
 const csvToJSON = require("csvtojson");
 
+// List of countries with special conditions
+let specialCountries = ["Denmark", "France","Netherlands", "United Kingdom"];
+
 /*
  * CronJob so run saveData function once a day
  */
@@ -25,7 +28,6 @@ let coronaJob = new CronJob('0 9 * * *', function () {
 /*
  * Fetches data from github and saves it to mongoDB.
  */
-
 function saveData(callback) {
   let date = new Date();
   date.setDate(date.getDate() - 1);
@@ -49,22 +51,12 @@ function saveData(callback) {
     .fromString(data)
     .then((csvArray) => { 
 
-      // Create one entry for USA
-      let unitedStatesData = {
-        confirmed: 0,
-        deaths: 0,
-        recovered: 0,
-        active: 0,
-        date: new Date(),
-      };
-
-      let chinaData = {
-        confirmed: 0,
-        deaths: 0,
-        recovered: 0,
-        active: 0,
-        date: new Date(),
-      };
+      // Create one entry for specific countries
+      let unitedStatesData = { confirmed: 0,deaths: 0,recovered: 0,active: 0,date: new Date(),};
+      let chinaData = { confirmed: 0,deaths: 0,recovered: 0,active: 0,date: new Date(),};
+      let spainData = { confirmed: 0,deaths: 0,recovered: 0,active: 0,date: new Date(),};
+      let germanyData = { confirmed: 0,deaths: 0,recovered: 0,active: 0,date: new Date(),};
+      let italyData = { confirmed: 0,deaths: 0,recovered: 0,active: 0,date: new Date(),};
 
       csvArray.shift();
 
@@ -72,65 +64,36 @@ function saveData(callback) {
       csvArray.forEach(countryArray => {
 
         if (countryArray[3].indexOf("US") > -1) {
-          unitedStatesData.confirmed += parseInt(countryArray[7]);
-          unitedStatesData.deaths += parseInt(countryArray[8]);
-          unitedStatesData.recovered += parseInt(countryArray[9]);
-          unitedStatesData.active += parseInt(countryArray[10]);
-          unitedStatesData.date = countryArray[4];
-        } else if (countryArray[3].indexOf("China") > -1) {
-          chinaData.confirmed += parseInt(countryArray[7]);
-          chinaData.deaths += parseInt(countryArray[8]);
-          chinaData.recovered += parseInt(countryArray[9]);
-          chinaData.active += parseInt(countryArray[10]);
-          chinaData.date = countryArray[4];
+          unitedStatesData = appendToObject(unitedStatesData, countryArray);
+        } else if (countryArray[3].indexOf("China") > -1 && countryArray[2].indexOf("Hong Kong") < 0 && countryArray[2].indexOf("Macau") < 0) {
+          chinaData = appendToObject(chinaData, countryArray);
+        } else if (countryArray[3].indexOf("Germany") > -1) {
+          germanyData = appendToObject(germanyData, countryArray);
+        } else if (countryArray[3].indexOf("Italy") > -1) {
+          italyData = appendToObject(italyData, countryArray);
+        } else if (countryArray[3].indexOf("Spain") > -1) {
+          spainData = appendToObject(spainData, countryArray);
+        } else if ((countryArray[3].indexOf("China") > -1 && countryArray[2].indexOf("Hong Kong") > -1) || (countryArray[3].indexOf("China") > -1 && countryArray[2].indexOf("Macau") > -1)) {
+          insertRecord(countryArray[2], countryArray);
+        } else if (specialCountries.includes(countryArray[3])) {
+          let countryName = '';
+          if (countryArray[2] != '') {
+            countryName = countryArray[2] + " (" + countryArray[3] + ")";
+          } else {
+            countryName = countryArray[3];
+          }
+          insertRecord(countryName, countryArray);
         } else {
-          const coronaInfo = new CoronaInfo({
-            _id: new mongoose.Types.ObjectId(),
-            country: countryArray[3].toLowerCase(),
-            confirmed: parseInt(countryArray[7]),
-            deaths: parseInt(countryArray[8]),
-            recovered: parseInt(countryArray[9]),
-            active: parseInt(countryArray[10]),
-            date: countryArray[4],
-          });
-
-          // Save to database
-          coronaInfo.save().catch(err => {
-            console.log(err);
-          });
+          insertRecord(countryArray[3], countryArray);
         }
+
       });
 
-      // Save US numbers to database
-      let coronaInfoUSA = new CoronaInfo({
-        _id: new mongoose.Types.ObjectId(),
-        country: "us",
-        confirmed: unitedStatesData.confirmed,
-        deaths: unitedStatesData.deaths,
-        recovered: unitedStatesData.recovered,
-        active: unitedStatesData.active,
-        date: unitedStatesData.date,
-      });
-
-      coronaInfoUSA.save().catch(err => {
-        console.log(err);
-      });
-
-      // Save China numbers to database
-      let coronaInfoChina = new CoronaInfo({
-        _id: new mongoose.Types.ObjectId(),
-        country: "china",
-        confirmed: chinaData.confirmed,
-        deaths: chinaData.deaths,
-        recovered: chinaData.recovered,
-        active: chinaData.active,
-        date: chinaData.date,
-      });
-
-      coronaInfoChina.save().catch(err => {
-        console.log(err);
-      });
-
+      insertRecordFromObj("US", unitedStatesData);
+      insertRecordFromObj("China", chinaData);
+      insertRecordFromObj("Spain", spainData);
+      insertRecordFromObj("Germany", germanyData);
+      insertRecordFromObj("Italy", italyData);
     })
 
     callback(success);
@@ -139,7 +102,7 @@ function saveData(callback) {
 
 function saveAllData(callback) {
   let start = new Date("2020-03-22");
-  let end = new Date("2020-05-07");
+  let end = new Date("2020-05-14");
   
   let success = true;
 
@@ -160,90 +123,49 @@ function saveAllData(callback) {
       })
       .fromString(data)
       .then((csvArray) => { 
-  
-        // Create one entry for USA
-        let unitedStatesData = {
-          confirmed: 0,
-          deaths: 0,
-          recovered: 0,
-          active: 0,
-          date: new Date(),
-        };
-  
-        let chinaData = {
-          confirmed: 0,
-          deaths: 0,
-          recovered: 0,
-          active: 0,
-          date: new Date(),
-        };
+
+        // Create one entry for specific countries
+        let unitedStatesData = { confirmed: 0,deaths: 0,recovered: 0,active: 0,date: new Date(),};
+        let chinaData = { confirmed: 0,deaths: 0,recovered: 0,active: 0,date: new Date(),};
+        let spainData = { confirmed: 0,deaths: 0,recovered: 0,active: 0,date: new Date(),};
+        let germanyData = { confirmed: 0,deaths: 0,recovered: 0,active: 0,date: new Date(),};
+        let italyData = { confirmed: 0,deaths: 0,recovered: 0,active: 0,date: new Date(),};
   
         csvArray.shift();
-
+  
         // Iterate through array
         csvArray.forEach(countryArray => {
   
           if (countryArray[3].indexOf("US") > -1) {
-            unitedStatesData.confirmed += parseInt(countryArray[7]);
-            unitedStatesData.deaths += parseInt(countryArray[8]);
-            unitedStatesData.recovered += parseInt(countryArray[9]);
-            unitedStatesData.active += parseInt(countryArray[10]);
-            unitedStatesData.date = countryArray[4];
-          } else if (countryArray[3].indexOf("China") > -1) {
-            chinaData.confirmed += parseInt(countryArray[7]);
-            chinaData.deaths += parseInt(countryArray[8]);
-            chinaData.recovered += parseInt(countryArray[9]);
-            chinaData.active += parseInt(countryArray[10]);
-            chinaData.date = countryArray[4];
+            unitedStatesData = appendToObject(unitedStatesData, countryArray);
+          } else if (countryArray[3].indexOf("China") > -1 && countryArray[2].indexOf("Hong Kong") < 0 && countryArray[2].indexOf("Macau") < 0) {
+            chinaData = appendToObject(chinaData, countryArray);
+          } else if (countryArray[3].indexOf("Germany") > -1) {
+            germanyData = appendToObject(germanyData, countryArray);
+          } else if (countryArray[3].indexOf("Italy") > -1) {
+            italyData = appendToObject(italyData, countryArray);
+          } else if (countryArray[3].indexOf("Spain") > -1) {
+            spainData = appendToObject(spainData, countryArray);
+          } else if ((countryArray[3].indexOf("China") > -1 && countryArray[2].indexOf("Hong Kong") > -1) || (countryArray[3].indexOf("China") > -1 && countryArray[2].indexOf("Macau") > -1)) {
+            insertRecord(countryArray[2], countryArray);
+          } else if (specialCountries.includes(countryArray[3])) {
+            let countryName = '';
+            if (countryArray[2] != '') {
+              countryName = countryArray[2] + " (" + countryArray[3] + ")";
+            } else {
+              countryName = countryArray[3];
+            }
+            insertRecord(countryName, countryArray);
           } else {
-            const coronaInfo = new CoronaInfo({
-              _id: new mongoose.Types.ObjectId(),
-              country: countryArray[3].toLowerCase(),
-              confirmed: parseInt(countryArray[7]),
-              deaths: parseInt(countryArray[8]),
-              recovered: parseInt(countryArray[9]),
-              active: parseInt(countryArray[10]),
-              date: countryArray[4],
-            });
-  
-            // Save to database
-            coronaInfo.save().catch(err => {
-              console.log(err);
-            });
+            insertRecord(countryArray[3], countryArray);
           }
-          
-        });
-        
-        // Save US numbers to database
-        let coronaInfoUSA = new CoronaInfo({
-          _id: new mongoose.Types.ObjectId(),
-          country: "us",
-          confirmed: unitedStatesData.confirmed,
-          deaths: unitedStatesData.deaths,
-          recovered: unitedStatesData.recovered,
-          active: unitedStatesData.active,
-          date: unitedStatesData.date,
         });
   
-        coronaInfoUSA.save().catch(err => {
-          console.log(err);
-        });
-  
-        // Save China numbers to database
-        let coronaInfoChina = new CoronaInfo({
-          _id: new mongoose.Types.ObjectId(),
-          country: "china",
-          confirmed: chinaData.confirmed,
-          deaths: chinaData.deaths,
-          recovered: chinaData.recovered,
-          active: chinaData.active,
-          date: chinaData.date,
-        });
-  
-        coronaInfoChina.save().catch(err => {
-          console.log(err);
-        });
-        
+        insertRecordFromObj("US", unitedStatesData);
+        insertRecordFromObj("China", chinaData);
+        insertRecordFromObj("Spain", spainData);
+        insertRecordFromObj("Germany", germanyData);
+        insertRecordFromObj("Italy", italyData);
       })
     });
   
@@ -251,6 +173,53 @@ function saveAllData(callback) {
     loop = new Date(newDate);
   }
   callback(success);
+}
+
+// Append country info to given object
+function appendToObject(countryObj, countryArray) {
+  countryObj.confirmed += parseInt(countryArray[7]);
+  countryObj.deaths += parseInt(countryArray[8]);
+  countryObj.recovered += parseInt(countryArray[9]);
+  countryObj.active += parseInt(countryArray[10]);
+  countryObj.date = countryArray[4];
+  return countryObj;
+}
+
+// Inserts a record to database
+function insertRecord(countryName, countryArray) {
+  const coronaInfo = new CoronaInfo({
+    _id: new mongoose.Types.ObjectId(),
+    country: countryName.toLowerCase(),
+    confirmed: !isNaN(countryArray[7]) ? parseInt(countryArray[7]) : "",
+    deaths: !isNaN(countryArray[8]) ? parseInt(countryArray[8]) : "",
+    recovered: !isNaN(countryArray[9]) ? parseInt(countryArray[9]) : "",
+    active: !isNaN(countryArray[10]) ? parseInt(countryArray[10]) : "",
+    date: countryArray[4],
+  });
+
+  // Save to database
+  coronaInfo.save().catch(err => {
+    console.log(err);
+  });
+}
+  // Inserts a record to database from object
+function insertRecordFromObj(countryName, countryObj) {
+
+  const coronaInfo = new CoronaInfo({
+    _id: new mongoose.Types.ObjectId(),
+    country: countryName.toLowerCase(),
+    confirmed: !isNaN(countryObj.confirmed) ? parseInt(countryObj.confirmed) : "",
+    deaths: !isNaN(countryObj.deaths) ? parseInt(countryObj.deaths) : "",
+    recovered: !isNaN(countryObj.recovered) ? parseInt(countryObj.recovered) : "",
+    active: !isNaN(countryObj.active) ? parseInt(countryObj.active) : "",
+    date: countryObj.date,
+  });
+
+
+  // Save to database
+  coronaInfo.save().catch(err => {
+    console.log(err);
+  });
 }
 
 module.exports = {
