@@ -36,6 +36,10 @@ function saveData(callback) {
   + date.getFullYear();
   let success = false;
 
+  let dataDate = loop.getFullYear() + "-" + ('0' + (loop.getMonth()+1)).slice(-2) + '-'
+    + ('0' + (loop.getDate())).slice(-2);
+  dataDate += "T09:00:00.000Z";
+
   // fetch data from github
   fetch('https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/' + dateString + '.csv')
   .then(res => res.text())
@@ -57,11 +61,14 @@ function saveData(callback) {
       let spainData = { confirmed: 0,deaths: 0,recovered: 0,active: 0,date: new Date(),};
       let germanyData = { confirmed: 0,deaths: 0,recovered: 0,active: 0,date: new Date(),};
       let italyData = { confirmed: 0,deaths: 0,recovered: 0,active: 0,date: new Date(),};
+      let canadaData = { confirmed: 0,deaths: 0,recovered: 0,active: 0,date: new Date(),};
 
       csvArray.shift();
 
       // Iterate through array
       csvArray.forEach(countryArray => {
+
+        countryArray[4] = dataDate;
 
         if (countryArray[3].indexOf("US") > -1) {
           unitedStatesData = appendToObject(unitedStatesData, countryArray);
@@ -73,7 +80,9 @@ function saveData(callback) {
           italyData = appendToObject(italyData, countryArray);
         } else if (countryArray[3].indexOf("Spain") > -1) {
           spainData = appendToObject(spainData, countryArray);
-        } else if ((countryArray[3].indexOf("China") > -1 && countryArray[2].indexOf("Hong Kong") > -1) || (countryArray[3].indexOf("China") > -1 && countryArray[2].indexOf("Macau") > -1)) {
+        } else if (countryArray[3].indexOf("Canada") > -1) {
+          canadaData = appendToObject(canadaData, countryArray);
+        }else if ((countryArray[3].indexOf("China") > -1 && countryArray[2].indexOf("Hong Kong") > -1) || (countryArray[3].indexOf("China") > -1 && countryArray[2].indexOf("Macau") > -1)) {
           insertRecord(countryArray[2], countryArray);
         } else if (specialCountries.includes(countryArray[3])) {
           let countryName = '';
@@ -111,6 +120,10 @@ function saveAllData(callback) {
     let dateString = ('0' + (loop.getMonth()+1)).slice(-2) + '-'
       + ('0' + (loop.getDate())).slice(-2) + '-'
       + loop.getFullYear();
+
+    let dataDate = loop.getFullYear() + "-" + ('0' + (loop.getMonth()+1)).slice(-2) + '-'
+    + ('0' + (loop.getDate())).slice(-2);
+    dataDate += "T09:00:00.000Z";
   
     fetch('https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/' + dateString + '.csv')
     .then(res => res.text())
@@ -136,6 +149,8 @@ function saveAllData(callback) {
         // Iterate through array
         csvArray.forEach(countryArray => {
   
+          countryArray[4] = dataDate;
+
           if (countryArray[3].indexOf("US") > -1) {
             unitedStatesData = appendToObject(unitedStatesData, countryArray);
           } else if (countryArray[3].indexOf("China") > -1 && countryArray[2].indexOf("Hong Kong") < 0 && countryArray[2].indexOf("Macau") < 0) {
@@ -177,6 +192,7 @@ function saveAllData(callback) {
 
 // Append country info to given object
 function appendToObject(countryObj, countryArray) {
+
   countryObj.confirmed += parseInt(countryArray[7]);
   countryObj.deaths += parseInt(countryArray[8]);
   countryObj.recovered += parseInt(countryArray[9]);
@@ -187,6 +203,7 @@ function appendToObject(countryObj, countryArray) {
 
 // Inserts a record to database
 function insertRecord(countryName, countryArray) {
+
   const coronaInfo = new CoronaInfo({
     _id: new mongoose.Types.ObjectId(),
     country: countryName.toLowerCase(),
